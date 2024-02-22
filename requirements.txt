@@ -1,5 +1,7 @@
 keboola.component
 keboola.utils
 keboola.http-client
-mock
-freezegun
+mock~=5.1.0
+freezegun~=1.4.0
+
+requests

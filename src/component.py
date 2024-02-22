@@ -4,19 +4,16 @@ Template Component main class.
 """
 import csv
 import logging
-from datetime import datetime
 
-from keboola.component.base import ComponentBase
+from keboola.component.sync_actions import SelectElement
+from keboola.component.base import ComponentBase, sync_action
 from keboola.component.exceptions import UserException
 
-# configuration variables
-KEY_API_TOKEN = '#api_token'
-KEY_PRINT_HELLO = 'print_hello'
+import keboolaApi.client as client
 
-# list of mandatory parameters => if some is missing,
-# component will fail with readable message on initialization.
-REQUIRED_PARAMETERS = [KEY_PRINT_HELLO]
-REQUIRED_IMAGE_PARS = []
+# configuration variables
+KEY_OUTPUT_LIST_FLOWS = 'output_list_flows'
+KEY_TRIGGER_IDS = 'trigger_ids'
 
 
 class Component(ComponentBase):
@@ -32,64 +29,146 @@ class Component(ComponentBase):
 
     def __init__(self):
         super().__init__()
+        self.client = None
+
+    def _check_environments_variables(self):
+        """
+        Check the presence of required environment variables and log an error if any are missing.
+        """
+        if not self.environment_variables.token:
+            logging.error("Environment variable self.environment_variables.token not found!")
+
+        if not self.environment_variables.url:
+            logging.error("Environment variable url not found!")
+
+    def _init_configuration(self):
+        self._check_environments_variables()
+        # Access parameters in data/config.json
+        self.client = client.KeboolaClient(self.environment_variables.token, self.environment_variables.url)
+
+    @staticmethod
+    def _is_expected(last_run, last_import):
+        if last_run < last_import:
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def _prep_new_trigger_configuration(trigger):
+        new_trigger_conf = {
+            'runWithTokenId': trigger.get('runWithTokenId'),
+            'component': trigger.get('component'),
+            'configurationId': trigger.get('configurationId'),
+            'coolDownPeriodMinutes': trigger.get('coolDownPeriodMinutes'),
+            'tableIds': [tbl.get('id') for tbl in trigger.get('tables')]
+        }
+        return new_trigger_conf
+
+    def _list_triggers(self, trigger_id=None):
+        """
+        Get list of triggers from the client
+        """
+        if trigger_id:
+            triggers = self.client.get_trigger(trigger_id)
+        else:
+            triggers = self.client.get_triggers()
+
+        for trigger in triggers:
+            # Add configuration details to the trigger
+            trigger['configuration_detail'] \
+                = self.client.get_component_configuration_detail(trigger.get('component'),
+                                                                 trigger.get('configurationId'))
+            # Add table details to the trigger
+            for table in trigger.get('tables'):
+                table_detail = self.client.get_table_detail(table.get('tableId'))
+                if table_detail:
+                    table_detail['is_expected'] = self._is_expected(trigger.get('lastRun'),
+                                                                    table_detail.get('lastImportDate'))
+                    table['table_detail'] = table_detail
+                # add some flag if some tables are missing
+                else:
+                    trigger['some_tables_missing'] = True
+        return triggers
 
     def run(self):
         """
         Main execution code
         """
-
-        # ####### EXAMPLE TO REMOVE
-        # check for missing configuration parameters
-        self.validate_configuration_parameters(REQUIRED_PARAMETERS)
-        self.validate_image_parameters(REQUIRED_IMAGE_PARS)
+        self._init_configuration()
         params = self.configuration.parameters
-        # Access parameters in data/config.json
-        if params.get(KEY_PRINT_HELLO):
-            logging.info("Hello World")
 
-        # get input table definitions
-        input_tables = self.get_input_tables_definitions()
-        for table in input_tables:
-            logging.info(f'Received input table: {table.name} with path: {table.full_path}')
+        if params.get(KEY_TRIGGER_IDS) or len(params.get(KEY_TRIGGER_IDS)) > 0:
+            # Remove triggers
+            for trigger_id in params.get(KEY_TRIGGER_IDS):
+                trigger_detail = self._list_triggers(trigger_id)
+                if trigger_detail:
+                    new_trigger_conf = self._prep_new_trigger_configuration(trigger_detail)
+                    self.client.create_trigger(new_trigger_conf)
+                    self.client.remove_trigger(trigger_id)
 
-        if len(input_tables) == 0:
-            raise UserException("No input tables found")
+        if params.get(KEY_OUTPUT_LIST_FLOWS):
+            # List triggers
+            triggers = self._list_triggers()
+            if triggers:
+                columns = ['trigger_id',
+                           'trigger_last_run',
+                           'flow_configuration_name',
+                           'selected_table_id',
+                           'selected_table_is_expected',
+                           'selected_table_last_import_date']
 
-        # get last state data/in/state.json from previous run
-        previous_state = self.get_state_file()
-        logging.info(previous_state.get('some_state_parameter'))
+                # Create output table (Tabledefinition - just metadata)
+                out_table = self.create_out_table_definition('flows_with_trigger.csv', incremental=False,
+                                                             primary_key=['trigger_id'], columns=columns)
+                # get file path of the table (data/out/tables/Features.csv)
+                out_table_path = out_table.full_path
+                logging.info(out_table_path)
 
-        # Create output table (Tabledefinition - just metadata)
-        table = self.create_out_table_definition('output.csv', incremental=True, primary_key=['timestamp'])
+                # Create output table (Tabledefinition - just metadata)
+                with open(out_table.full_path, mode='wt', encoding='utf-8', newline='') as out_file:
+                    # write result with column added
+                    writer = csv.DictWriter(out_file, fieldnames=columns, dialect='kbc')
+                    writer.writeheader()
 
-        # get file path of the table (data/out/tables/Features.csv)
-        out_table_path = table.full_path
-        logging.info(out_table_path)
+                    for trigger in triggers:
+                        for table in trigger.get('tables'):
+                            writer.writerow({'trigger_id': trigger.get('id'),
+                                             'trigger_last_run': trigger.get('lastRun'),
+                                             'flow_configuration_name': trigger.get('configuration_detail').get('name'),
+                                             'selected_table_id': table.get('tableId'),
+                                             'selected_table_is_expected': table.get('table_detail').get('is_expected',
+                                                                                                         None),
+                                             'selected_table_last_import_date': table.get('table_detail').get(
+                                                 'lastImportDate',
+                                                 None)})
 
-        # Add timestamp column and save into out_table_path
-        input_table = input_tables[0]
-        with (open(input_table.full_path, 'r') as inp_file,
-              open(table.full_path, mode='wt', encoding='utf-8', newline='') as out_file):
-            reader = csv.DictReader(inp_file)
+                # Save table manifest (output.csv.manifest) from the tabledefinition
+                self.write_manifest(out_table)
 
-            columns = list(reader.fieldnames)
-            # append timestamp
-            columns.append('timestamp')
-
-            # write result with column added
-            writer = csv.DictWriter(out_file, fieldnames=columns)
-            writer.writeheader()
-            for in_row in reader:
-                in_row['timestamp'] = datetime.now().isoformat()
-                writer.writerow(in_row)
-
-        # Save table manifest (output.csv.manifest) from the tabledefinition
-        self.write_manifest(table)
-
-        # Write new state - will be available next run
-        self.write_state_file({"some_state_parameter": "value"})
-
-        # ####### EXAMPLE TO REMOVE END
+    @sync_action('list_flows')
+    def list_flows(self):
+        """
+        List all flows and formate it to a list of SelectElement
+        """
+        self._init_configuration()
+        list_flows = []
+        # Get list of triggers
+        for trigger in self._list_triggers():
+            trigger_id = trigger.get('id')
+            trigger_last_run = trigger.get('lastRun')
+            configuration_name = trigger.get('configuration_detail').get('name')
+            trigger_tables = []
+            # Add tables to list
+            for table in trigger.get('tables'):
+                table_detail = table.get('table_detail')
+                trigger_tables.append(f"table Id: {table_detail.get('id')} "
+                                      f"({'-[x]' if bool(table_detail.get('is_expected')) else '-[ ]'} "
+                                      f"last import: {table_detail.get('lastImportDate')})")
+            # Add to list
+            list_flows.append(SelectElement(label=f"Flow: {configuration_name} "
+                                                  f"(last run: {trigger_last_run}) "
+                                                  f"- selected tables: {trigger_tables}", value=trigger_id))
+        return list_flows
 
 
 """

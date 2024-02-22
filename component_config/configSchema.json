@@ -1,19 +1,33 @@
 {
   "type": "object",
-  "title": "extractor configuration",
-  "required": [
-    "print_hello"
-  ],
+  "title": "Application configuration",
   "properties": {
-    "print_hello": {
+    "output_list_flows": {
+      "propertyOrder": 1,
       "type": "boolean",
-      "title": "Print Hello",
-      "propertyOrder": 1
+      "format": "checkbox",
+      "title": "Write list of flows with trigger to a output"
     },
-    "debug": {
-      "type": "boolean",
-      "title": "Debug",
-      "propertyOrder": 2
+    "trigger_ids": {
+      "propertyOrder": 2,
+      "title": "Flow triggers to reset",
+      "type": "string",
+      "description": "The ID of the trigger you wish to reset.",
+      "enum": [],
+      "items": {
+        "enum": [],
+        "type": "string"
+      },
+      "format": "select",
+      "options": {
+        "async": {
+          "cache": true,
+          "label": "Re-load flows with trigger",
+          "action": "list_flows",
+          "autoload": []
+        }
+      },
+      "uniqueItems": true
     }
   }
 }
