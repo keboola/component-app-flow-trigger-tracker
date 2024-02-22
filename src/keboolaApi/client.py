@@ -1,6 +1,7 @@
 import json
 import requests
 
+
 class KeboolaClientException(Exception):
     pass
 
@@ -64,4 +65,3 @@ class KeboolaClient:
 
         self._handle_http_error(response)
         return response.json()
-
