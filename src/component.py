@@ -4,8 +4,9 @@ Template Component main class.
 """
 import csv
 import logging
+from typing import List, Dict
 
-from keboola.component.sync_actions import SelectElement
+from keboola.component.sync_actions import SelectElement, ValidationResult
 from keboola.component.base import ComponentBase, sync_action
 from keboola.component.exceptions import UserException
 
@@ -27,6 +28,24 @@ class Component(ComponentBase):
         If `debug` parameter is present in the `config.json`, the default logger is set to verbose DEBUG mode.
     """
 
+    @staticmethod
+    def _prep_new_trigger_configuration(trigger):
+        new_trigger_conf = {
+            'runWithTokenId': trigger.get('runWithTokenId'),
+            'component': trigger.get('component'),
+            'configurationId': trigger.get('configurationId'),
+            'coolDownPeriodMinutes': trigger.get('coolDownPeriodMinutes'),
+            'tableIds': [tbl.get('tableId') for tbl in trigger.get('tables')]
+        }
+        return new_trigger_conf
+
+    @staticmethod
+    def _is_expected(last_run, last_import):
+        if last_run < last_import:
+            return True
+        else:
+            return False
+
     def __init__(self):
         super().__init__()
         self.client = None
@@ -46,30 +65,12 @@ class Component(ComponentBase):
         # Access parameters in data/config.json
         self.client = client.KeboolaClient(self.environment_variables.token, self.environment_variables.url)
 
-    @staticmethod
-    def _is_expected(last_run, last_import):
-        if last_run < last_import:
-            return True
-        else:
-            return False
-
-    @staticmethod
-    def _prep_new_trigger_configuration(trigger):
-        new_trigger_conf = {
-            'runWithTokenId': trigger.get('runWithTokenId'),
-            'component': trigger.get('component'),
-            'configurationId': trigger.get('configurationId'),
-            'coolDownPeriodMinutes': trigger.get('coolDownPeriodMinutes'),
-            'tableIds': [tbl.get('id') for tbl in trigger.get('tables')]
-        }
-        return new_trigger_conf
-
     def _list_triggers(self, trigger_id=None):
         """
         Get list of triggers from the client
         """
         if trigger_id:
-            triggers = self.client.get_trigger(trigger_id)
+            triggers: List[Dict] = [self.client.get_trigger(trigger_id)]
         else:
             triggers = self.client.get_triggers()
 
@@ -102,7 +103,7 @@ class Component(ComponentBase):
             for trigger_id in params.get(KEY_TRIGGER_IDS):
                 trigger_detail = self._list_triggers(trigger_id)
                 if trigger_detail:
-                    new_trigger_conf = self._prep_new_trigger_configuration(trigger_detail)
+                    new_trigger_conf = self._prep_new_trigger_configuration(trigger_detail[0])
                     self.client.create_trigger(new_trigger_conf)
                     self.client.remove_trigger(trigger_id)
 
@@ -151,24 +152,38 @@ class Component(ComponentBase):
         List all flows and formate it to a list of SelectElement
         """
         self._init_configuration()
-        list_flows = []
-        # Get list of triggers
-        for trigger in self._list_triggers():
-            trigger_id = trigger.get('id')
-            trigger_last_run = trigger.get('lastRun')
-            configuration_name = trigger.get('configuration_detail').get('name')
-            trigger_tables = []
-            # Add tables to list
-            for table in trigger.get('tables'):
-                table_detail = table.get('table_detail')
-                trigger_tables.append(f"table Id: {table_detail.get('id')} "
-                                      f"({'-[x]' if bool(table_detail.get('is_expected')) else '-[ ]'} "
-                                      f"last import: {table_detail.get('lastImportDate')})")
-            # Add to list
-            list_flows.append(SelectElement(label=f"Flow: {configuration_name} "
-                                                  f"(last run: {trigger_last_run}) "
-                                                  f"- selected tables: {trigger_tables}", value=trigger_id))
-        return list_flows
+        return [SelectElement(label=trigger.get('configuration_detail').get('name'), value=trigger.get('id')) for
+                trigger in self._list_triggers()]
+
+    @sync_action('flow_detail')
+    def flow_detail(self):
+        """
+        List all flows and formate it to a list of SelectElement
+        """
+        self._init_configuration()
+        params = self.configuration.parameters
+        flow_detail = []
+        # Get detail of triggers
+        if params.get(KEY_TRIGGER_IDS) or len(params.get(KEY_TRIGGER_IDS)) > 0:
+            # Remove triggers
+            for trigger_id in params.get(KEY_TRIGGER_IDS):
+                triggers = self._list_triggers(trigger_id)
+                if triggers:
+                    trigger_detail = triggers[0]
+                    trigger_last_run = trigger_detail.get('lastRun')
+                    configuration_name = trigger_detail.get('configuration_detail').get('name')
+                    trigger_tables = []
+                    # Add tables to list
+                    for table in trigger_detail.get('tables'):
+                        table_detail = table.get('table_detail')
+                        trigger_tables.append(f"table Id: {table_detail.get('id')} "
+                                              f"({'-[x]' if bool(table_detail.get('is_expected')) else '-[ ]'} "
+                                              f"last import: {table_detail.get('lastImportDate')})")
+                    # Add to list
+                    flow_detail.append(ValidationResult(message=f"Flow: {configuration_name} "
+                                                                f"(last run: {trigger_last_run}) "
+                                                                f"- selected tables: {trigger_tables}"))
+        return flow_detail
 
 
 """
