@@ -1,1 +1,1 @@
-[]
+["list_flows","flow_detail"]
