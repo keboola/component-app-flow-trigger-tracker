@@ -164,7 +164,7 @@ class Component(ComponentBase):
         params = self.configuration.parameters
         flow_detail = []
         # Get detail of triggers
-        if params.get(KEY_TRIGGER_IDS) or len(params.get(KEY_TRIGGER_IDS)) > 0:
+        if params.get(KEY_TRIGGER_IDS):
             # Remove triggers
             for trigger_id in params.get(KEY_TRIGGER_IDS):
                 triggers = self._list_triggers(trigger_id)
