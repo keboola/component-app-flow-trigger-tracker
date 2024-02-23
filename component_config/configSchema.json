@@ -11,7 +11,7 @@
     "trigger_ids": {
       "propertyOrder": 2,
       "title": "Flow triggers to reset",
-      "type": "string",
+      "type": "array",
       "description": "The ID of the trigger you wish to reset.",
       "enum": [],
       "items": {
@@ -28,6 +28,18 @@
         }
       },
       "uniqueItems": true
-    }
+    },
+    "validation_button": {
+        "type": "button",
+        "format": "sync-action",
+        "propertyOrder": 10,
+        "options": {
+          "async": {
+            "label": "Validate",
+            "action": "flow_detail",
+            "autoload": ["properties.trigger_ids"]
+          }
+        }
+      }
   }
 }
