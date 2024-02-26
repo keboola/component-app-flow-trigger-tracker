@@ -66,7 +66,7 @@ if [[ $is_deploy_ready == 'true' ]]; then
 fi
 
 # Update the actions.md file
-fn_actions_md_update.sh "$is_deploy_ready"
+source fn_actions_md_update.sh "$is_deploy_ready"
 # update_property actions
 update_property "$app_id" "actions" "component_config/actions.md"
 
