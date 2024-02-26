@@ -2,6 +2,7 @@ name: Keboola Component Deployment Pipeline
 on: [ push ]
 concurrency: ci-${{ github.ref }} # to avoid tag collisions in the ECR
 env:
+  DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
   DOCKERHUB_USER: "keboolabot"
   KBC_DEVELOPERPORTAL_APP: "kds-team.app-flow-trigger-tracker"
   KBC_DEVELOPERPORTAL_VENDOR: "kds-team"
@@ -39,6 +40,7 @@ jobs:
       run: |
         TAG="${GITHUB_REF##*/}"
         IS_SEMANTIC_TAG=$(echo "$TAG" | grep -q '^v\?[0-9]\+\.[0-9]\+\.[0-9]\+$' && echo true || echo false)
+        echo "default_branch is '$DEFAULT_BRANCH'"
         echo "Tag = '$TAG', is semantic tag = '$IS_SEMANTIC_TAG'"
         echo "is_semantic_tag=$IS_SEMANTIC_TAG" >> $GITHUB_OUTPUT
         echo "app_image_tag=$TAG" >> $GITHUB_OUTPUT
@@ -119,6 +121,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Update developer portal properties
+        # TODO mohu poslat do update.sh hodnotu true pokud jsem branch mactaster???
         run: |
           chmod +x scripts/update_dev_portal_properties.sh
           scripts/update_dev_portal_properties.sh
