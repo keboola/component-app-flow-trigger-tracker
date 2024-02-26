@@ -28,9 +28,11 @@ sync_actions_to_md() {
     }
 
     # Get all occurrences of lines containing @sync_action('XXX') from the .py file
+    # shellcheck disable=SC2155
     local SYNC_ACTIONS=$(grep -o "@sync_action('[^']*')" "$PYTHON_FILE" | sed "s/@sync_action('\([^']*\)')/\1/" | sort | uniq)
 
     # Read the content of the actions.md file into a variable and extract the list of actions
+    # shellcheck disable=SC2155
     local MD_CONTENT=$(grep -o '\[.*\]' "$MD_FILE" | tr -d '[]"')
 
     # Convert the MD_CONTENT to a proper array
@@ -65,6 +67,7 @@ sync_actions_to_md() {
     done
 
     # Convert the array to JSON format
+    # shellcheck disable=SC2155
     local JSON_ACTIONS=$(printf '"%s",' "${EXISTING_ACTIONS[@]}")
     JSON_ACTIONS="[${JSON_ACTIONS%,}]"
 

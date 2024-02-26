@@ -28,6 +28,7 @@ update_property() {
         return
     fi
 
+    # shellcheck disable=SC2155
     local value=$(<"$file_path")
 
     echo "Updating $prop_name for $app_id"
