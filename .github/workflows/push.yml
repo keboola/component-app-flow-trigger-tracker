@@ -72,7 +72,7 @@ jobs:
         run: docker login --username "${{ env.DOCKERHUB_USER }}" --password "${{ env.DOCKERHUB_TOKEN }}"
 
       - name: Build image
-        run: docker build -t "${{ env.KBC_DEVELOPERPORTAL_APP }}" .
+        run: docker build -t "${{ env.KBC_DEVELOPERPORTAL_APP }}".
 
       - name: Push image to ECR
         uses: keboola/action-push-to-ecr@master
@@ -128,18 +128,6 @@ jobs:
           componentId: ${{ env.KBC_DEVELOPERPORTAL_APP }}
           tag: ${{ needs.determine_environment.outputs.app_image_tag }}
           configs: ${{ env.KBC_TEST_PROJECT_CONFIGS }}
-
-  update_actions:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Update actions by component.py
-        if: is_default_branch
-        run: |
-          chmod +x scripts/update_actions_by_component.py
-          scripts/update_actions_by_component.py
 
   deploy:
     env:
