@@ -30,10 +30,13 @@ jobs:
       - name: Is current branch the default branch
         id: branch
         run: |
-          DEF="${{ env.DEFAULT_BRANCH }}"
-          ACT="${{ env.ACTUAL_BRANCH }}"
-          echo "default_branch is '$DEF' and actual_branch is '$ACT'"
-          echo "is_default_branch=$DEF=$ACT" >> $GITHUB_OUTPUT
+          echo "default_branch is '"${{ env.DEFAULT_BRANCH }}"' and actual_branch is '${{ env.ACTUAL_BRANCH }}'"
+          if [ "${{ env.DEFAULT_BRANCH }}" = "${{ env.ACTUAL_BRANCH }}" ]; then
+              IS_DEFAULT_BRANCH=true
+          else
+              IS_DEFAULT_BRANCH=false
+          fi
+          echo "is_default_branch=$IS_DEFAULT_BRANCH" >> $GITHUB_OUTPUT
 
       - name: Set image tag
         id: tag
