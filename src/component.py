@@ -6,9 +6,9 @@ import csv
 import logging
 from typing import List, Dict
 
-from keboola.component.sync_actions import SelectElement, ValidationResult
 from keboola.component.base import ComponentBase, sync_action
 from keboola.component.exceptions import UserException
+from keboola.component.sync_actions import SelectElement, ValidationResult
 
 import keboolaApi.client as client
 
@@ -162,28 +162,19 @@ class Component(ComponentBase):
         """
         self._init_configuration()
         params = self.configuration.parameters
-        flow_detail = []
         # Get detail of triggers
         if params.get(KEY_TRIGGER_IDS):
             # Remove triggers
             for trigger_id in params.get(KEY_TRIGGER_IDS):
                 triggers = self._list_triggers(trigger_id)
                 if triggers:
-                    trigger_detail = triggers[0]
-                    trigger_last_run = trigger_detail.get('lastRun')
-                    configuration_name = trigger_detail.get('configuration_detail').get('name')
-                    trigger_tables = []
-                    # Add tables to list
-                    for table in trigger_detail.get('tables'):
-                        table_detail = table.get('table_detail')
-                        trigger_tables.append(f"table Id: {table_detail.get('id')} "
-                                              f"({'-[x]' if bool(table_detail.get('is_expected')) else '-[ ]'} "
-                                              f"last import: {table_detail.get('lastImportDate')})")
-                    # Add to list
-                    flow_detail.append(ValidationResult(message=f"Flow: {configuration_name} "
-                                                                f"(last run: {trigger_last_run}) "
-                                                                f"- selected tables: {trigger_tables}"))
-        return flow_detail
+                    trigger_tables = [f"table Id: {table.get('table_detail').get('id')} "
+                                      f"({'-[x]' if bool(table.get('table_detail').get('is_expected')) else '-[ ]'} "
+                                      f"last import: {table.get('table_detail').get('lastImportDate')})"
+                                      for table in triggers[0].get('tables')]
+                    return ValidationResult(message=f"Flow: {triggers[0].get('configuration_detail').get('name')} "
+                                                    f"(last run: {triggers[0].get('lastRun')}) "
+                                                    f"- selected tables: {trigger_tables}")
 
 
 """
