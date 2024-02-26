@@ -137,7 +137,7 @@ jobs:
       - build
       - tests
       - tests-kbc
-    if: ${{ needs.determine_environment.outputs.is_deploy_ready }} == 'true'
+    if: needs.determine_environment.outputs.is_deploy_ready == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Set tag in the Developer Portal
@@ -166,4 +166,4 @@ jobs:
       - name: Update developer portal properties
         run: |
           chmod +x scripts/developer_portal
-          scripts/developer_portal/update_dev_portal_properties.sh
+          scripts/developer_portal/update_properties.sh
