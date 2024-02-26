@@ -72,7 +72,7 @@ jobs:
         run: docker login --username "${{ env.DOCKERHUB_USER }}" --password "${{ env.DOCKERHUB_TOKEN }}"
 
       - name: Build image
-        run: docker build -t "${{ env.KBC_DEVELOPERPORTAL_APP }}".
+        run: docker build -t "${{ env.KBC_DEVELOPERPORTAL_APP }}" .
 
       - name: Push image to ECR
         uses: keboola/action-push-to-ecr@master
