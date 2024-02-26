@@ -32,7 +32,7 @@ jobs:
         run: |
           echo "default_branch is '${{ env.DEFAULT_BRANCH }}' and actual_branch is '${{ env.ACTUAL_BRANCH }}'"
           actual_branch_name="${{ env.ACTUAL_BRANCH }}"
-          if [ "${{ env.DEFAULT_BRANCH }}" = "${actual_branch_name/#refs\/heads\//}" ]; then
+          if [ "${{ env.DEFAULT_BRANCH }}" = "${actual_branch_name/#refs\/tags\//}" ]; then
               IS_DEFAULT_BRANCH=true
           else
               IS_DEFAULT_BRANCH=false
