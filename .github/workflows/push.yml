@@ -42,18 +42,17 @@ jobs:
             branch="$(echo ${raw//origin\//} | tr -d '\n')"
             echo "branch_name=$branch" >> $GITHUB_OUTPUT
           fi
-          echo "Current branch is '$branch'"
+          echo "Current branch is $branch"
 
       - name: Is current branch the default branch
         id: branch
         run: |
-          echo "default_branch is '${{ github.event.repository.default_branch }}'"
+          echo "default_branch='${{ github.event.repository.default_branch }}'"
           if [ "${{ github.event.repository.default_branch }}" = "${{ steps.current.outputs.branch_name }}" ]; then
-             echo "is_default_branch=true" >> $GITHUB_OUTPUT
+             echo "is_default_branch=true" | tee -a $GITHUB_OUTPUT
           else
-              echo "is_default_branch=false" >> $GITHUB_OUTPUT
+             echo "is_default_branch=false" | tee -a $GITHUB_OUTPUT
           fi
-          echo "Is current branch default: $is_default_branch"
 
       - name: Set image tag
         id: tag
