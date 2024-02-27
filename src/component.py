@@ -165,16 +165,16 @@ class Component(ComponentBase):
         # Get detail of triggers
         if params.get(KEY_TRIGGER_IDS):
             # Initialize the Markdown table
-            markdown_table = "| Flow | Last Run | Selected Tables | Last Import |\n"
-            markdown_table += "|------|----------|----------------|-------------|\n"
+            markdown_table = "| Flow | Last Run | Selected Tables | Last Import | Is expected |\n"
+            markdown_table += "|------|----------|----------------|-------------|-------------|\n"
 
             # Fill in the table rows
             for trigger_id in params.get(KEY_TRIGGER_IDS):
                 triggers = self._list_triggers(trigger_id)
                 if triggers:
-                    trigger_tables = [f"**table Id: {table.get('table_detail').get('id')}** "
-                                      f"({'-[x]' if bool(table.get('table_detail').get('is_expected')) else '-[ ]'} "
-                                      f"last import: {table.get('table_detail').get('lastImportDate')})"
+                    trigger_tables = [f"**{table.get('table_detail').get('id')}**"
+                                      f"| {table.get('table_detail').get('lastImportDate')})"
+                                      f"| {table.get('table_detail').get('is_expected')}"
                                       for table in triggers[0].get('tables')]
                     markdown_table += (f"| {triggers[0].get('configuration_detail').get('name')} "
                                        f"| {triggers[0].get('lastRun')} "
