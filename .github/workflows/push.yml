@@ -31,9 +31,17 @@ jobs:
       is_default_branch: ${{ steps.branch.outputs.is_default_branch }}
       is_deploy_ready: ${{ steps.deploy_ready.outputs.is_deploy_ready }}
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
       - name: Get branch name
         id: branch_name
-        run: echo "Branch name is $(git rev-parse --abbrev-ref $(git rev-list -n 1 ${{ github.ref }}))"
+        run: |
+          echo "Branch name is $(git rev-parse --abbrev-ref $(git rev-list -n 1 ${{ github.ref }}))"
+          raw=$(git branch -r --contains ${{ github.ref }})
+          branch="$(echo ${raw//origin\//} | tr -d '\n')"
+          echo "{name}=branch" >> $GITHUB_OUTPUT
+          echo "Branches where this tag exists : $branch."
 
       - name: Print branch name
         run: echo "Branch for tag is ${{ steps.branch_name.outputs.branch_name }}"
