@@ -34,14 +34,14 @@ jobs:
         id: actual_branch
         run: |
           # "Set branch names..."
-          if [[ "env.GITHUB_REF" != "refs/tags/"* ]]; then
+          if [[ ${{ github.ref }} != "refs/tags/"* ]]; then
             branch_name="${{ github.ref }}"
             branch_name=${branch_name/#refs\/tags\//}
-            echo "actual_branch=branch_name" >> $GITHUB_OUTPUT
+            echo "actual_branch=$branch_name" >> $GITHUB_OUTPUT
           else
             raw=$(git branch -r --contains ${{ github.ref }})
             branch="$(echo ${raw//origin\//} | tr -d '\n')"
-            echo "actual_branch=branch" >> $GITHUB_OUTPUT
+            echo "actual_branch=$branch" >> $GITHUB_OUTPUT
           fi
 
       - name: Is current branch the default branch
