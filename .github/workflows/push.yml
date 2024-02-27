@@ -24,7 +24,7 @@ jobs:
       HEAD_REF: ${{ github.head_ref }}
       REF_NAME: ${{ github.ref_name }}
       BASE_REF: ${{ github.base_ref }}
-      EVENT_REF: ${{ github.event.ref }}"
+      EVENT_REF: ${{ github.event.ref }}
     outputs:
       app_image_tag: ${{ steps.tag.outputs.app_image_tag }}
       is_semantic_tag: ${{ steps.tag.outputs.is_semantic_tag }}
