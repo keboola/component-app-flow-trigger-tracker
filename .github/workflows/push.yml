@@ -35,8 +35,7 @@ jobs:
         run: |
           # "Set branch names..."
           if [[ ${{ github.ref }} != "refs/tags/"* ]]; then
-            branch_name="${{ github.ref }}"
-            branch_name=${branch_name/#refs\/tags\//}
+            branch_name=${{ github.ref_name }}
             echo "actual_branch=$branch_name" >> $GITHUB_OUTPUT
           else
             raw=$(git branch -r --contains ${{ github.ref }})
@@ -58,7 +57,7 @@ jobs:
       - name: Set image tag
         id: tag
         run: |
-          TAG="${GITHUB_REF##*/}"
+          TAG=${{ github.ref_name }}
           IS_SEMANTIC_TAG=$(echo "$TAG" | grep -q '^v\?[0-9]\+\.[0-9]\+\.[0-9]\+$' && echo true || echo false)
           echo "Tag = '$TAG', is semantic tag = '$IS_SEMANTIC_TAG'"
           echo "is_semantic_tag=$IS_SEMANTIC_TAG" >> $GITHUB_OUTPUT
