@@ -183,6 +183,7 @@ class Component(ComponentBase):
             # Return the Markdown table
             return ValidationResult(message=markdown_table)
 
+
 """
         Main entrypoint
 """
