@@ -67,12 +67,12 @@ jobs:
       - name: Is ready to deploy
         id: deploy_ready
         run: |
-          if [[ "${{ steps.branch.outputs.is_default_branch }}" == 'true' \
-            && "${{ env.ACTUAL_BRANCH }}" == refs/tags/* \
-            && "${{ steps.tag.outputs.is_semantic_tag }}" == 'true' ]]; then
-              IS_DEPLOY_READY='true'
+          if [[ "${{ steps.branch.outputs.is_default_branch }}" == "true" \
+            && "${{ env.ACTUAL_BRANCH }}" == "refs/tags/*" \
+            && "${{ steps.tag.outputs.is_semantic_tag }}" == "true" ]]; then
+              IS_DEPLOY_READY=true
           else
-              IS_DEPLOY_READY='false'
+              IS_DEPLOY_READY=false
           fi
           echo "Deploy Ready: $IS_DEPLOY_READY"
           echo "is_deploy_ready=$IS_DEPLOY_READY" >> $GITHUB_OUTPUT
