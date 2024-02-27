@@ -119,8 +119,9 @@ class Component(ComponentBase):
                            'selected_table_last_import_date']
 
                 # Create output table (Tabledefinition - just metadata)
-                out_table = self.create_out_table_definition('flows_with_trigger.csv', incremental=False,
-                                                             primary_key=['trigger_id'], columns=columns)
+                out_table = self.create_out_table_definition('flows_with_trigger.csv', primary_key=['trigger_id'],
+                                                             columns=columns)
+
                 # get file path of the table (data/out/tables/Features.csv)
                 out_table_path = out_table.full_path
                 logging.info(out_table_path)
