@@ -37,6 +37,9 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Fetch all branches from remote repository
+        run: git fetch --prune --unshallow --tags
+
       - name: get branch name v 2
         id: branch2
         run: |
