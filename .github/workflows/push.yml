@@ -56,8 +56,9 @@ jobs:
             echo "ref_branch=$(eval printf "%s" "$REF_BRANCH")" >> "$GITHUB_OUTPUT"
           else
             BASE_REF=$(printf "%q" "$GITHUB_EVENT_BASE_REF")
+            echo "$BASE_REF"
             BASE_REF=${BASE_REF/refs\/heads\/$INPUTS_STRIP_TAG_PREFIX/}
-          
+            echo "$BASE_REF"
             echo "base_ref_branch=$(eval printf "%s" "$BASE_REF")" >> "$GITHUB_OUTPUT"
           fi
 
@@ -67,6 +68,8 @@ jobs:
       - name: Get branch name
         id: branch_name
         run: |
+          echo $(git branch -r --contains ${{ github.sha }})
+          echo ${{ github.event.base_ref }}
           echo "Branch name is $(git rev-parse --abbrev-ref $(git rev-list -n 1 ${{ github.ref }}))"
           echo "$(git branch -r --contains ${{ github.ref }})"
           raw=$(git branch -r --contains ${{ github.ref }})
