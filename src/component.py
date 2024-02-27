@@ -41,7 +41,7 @@ class Component(ComponentBase):
 
     @staticmethod
     def _is_expected(last_run, last_import):
-        if last_run < last_import:
+        if last_run > last_import:
             return True
         else:
             return False
@@ -182,9 +182,6 @@ class Component(ComponentBase):
 
             # Return the Markdown table
             return ValidationResult(message=markdown_table)
-
-        # TODO add error message
-
 
 """
         Main entrypoint
