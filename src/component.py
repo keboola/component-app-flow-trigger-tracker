@@ -172,16 +172,18 @@ class Component(ComponentBase):
             for trigger_id in params.get(KEY_TRIGGER_IDS):
                 triggers = self._list_triggers(trigger_id)
                 if triggers:
-                    trigger_tables = [f"**{table.get('table_detail').get('id')}**"
-                                      f"| {table.get('table_detail').get('lastImportDate')})"
-                                      f"| {table.get('table_detail').get('is_expected')}"
-                                      for table in triggers[0].get('tables')]
-                    markdown_table += (f"| {triggers[0].get('configuration_detail').get('name')} "
-                                       f"| {triggers[0].get('lastRun')} "
-                                       f"| {'<br>'.join(trigger_tables)} |\n")
+                    for table in triggers[0].get('tables'):
+                        markdown_table += \
+                            f"| **{triggers[0].get('configuration_detail').get('name')}** " \
+                            f"| {triggers[0].get('lastRun')} " \
+                            f"| **{table.get('table_detail').get('id')}**" \
+                            f"| {table.get('table_detail').get('lastImportDate')})" \
+                            f"| {table.get('table_detail').get('is_expected')} |\n"
 
             # Return the Markdown table
             return ValidationResult(message=markdown_table)
+
+        # TODO add error message
 
 
 """
