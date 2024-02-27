@@ -38,6 +38,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: get branch name v 2
+        id: branch
         run: |
           # "Set branch names..."
           if [[ "$GITHUB_REF" != "refs/tags/"* ]]; then
@@ -61,14 +62,13 @@ jobs:
           fi
 
       - name: Print branch name v2
-        run: echo "Branch for tag is ${{ steps.branch.outputs.head_ref_branch }} \
-          - ${{ steps.branch.outputs.base_ref_branch }} \
-          - ${{ steps.branch.outputs.head_ref_branch }}"
+        run: echo "Branch for tag is ${{ steps.branch.outputs.head_ref_branch }} - ${{ steps.branch.outputs.base_ref_branch }} - ${{ steps.branch.outputs.head_ref_branch }}"
 
       - name: Get branch name
         id: branch_name
         run: |
           echo "Branch name is $(git rev-parse --abbrev-ref $(git rev-list -n 1 ${{ github.ref }}))"
+          echo "$(git branch -r --contains ${{ github.ref }})"
           raw=$(git branch -r --contains ${{ github.ref }})
           echo " '$raw' "
           branch="$(echo ${raw//origin\//} | tr -d '\n')"
