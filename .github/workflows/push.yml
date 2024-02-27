@@ -16,12 +16,12 @@ env:
   KBC_TEST_PROJECT_CONFIGS: "" # space separated list of config ids (optional)
 
 jobs:
-  determine_environment:
+  push_event_info:
     runs-on: ubuntu-latest
     outputs:
       app_image_tag: ${{ steps.tag.outputs.app_image_tag }}
       is_semantic_tag: ${{ steps.tag.outputs.is_semantic_tag }}
-      is_default_branch: ${{ steps.branch.outputs.is_default_branch }}
+      is_default_branch: ${{ steps.default_branch.outputs.is_default_branch }}
       is_deploy_ready: ${{ steps.deploy_ready.outputs.is_deploy_ready }}
     steps:
       - name: Checkout Repository
@@ -31,24 +31,22 @@ jobs:
         run: git fetch --prune --unshallow --tags -f
 
       - name: Get current branch name
-        id: branch_name
+        id: current_branch
         run: |
-          # "Set branch names..."
           if [[ ${{ github.ref }} != "refs/tags/"* ]]; then
             branch_name=${{ github.ref_name }}
-            echo "branch_name=$branch_name" >> $GITHUB_OUTPUT
+            echo "branch_name=$branch_name" | tee -a $GITHUB_OUTPUT
           else
             raw=$(git branch -r --contains ${{ github.ref }})
             branch="$(echo ${raw//origin\//} | tr -d '\n')"
-            echo "branch_name=$branch" >> $GITHUB_OUTPUT
+            echo "branch_name=$branch" | tee -a $GITHUB_OUTPUT
           fi
-          echo "Current branch is $branch"
 
       - name: Is current branch the default branch
-        id: branch
+        id: default_branch
         run: |
           echo "default_branch='${{ github.event.repository.default_branch }}'"
-          if [ "${{ github.event.repository.default_branch }}" = "${{ steps.current.outputs.branch_name }}" ]; then
+          if [ "${{ github.event.repository.default_branch }}" = "${{ steps.current_branch.outputs.branch_name }}" ]; then
              echo "is_default_branch=true" | tee -a $GITHUB_OUTPUT
           else
              echo "is_default_branch=false" | tee -a $GITHUB_OUTPUT
@@ -59,27 +57,24 @@ jobs:
         run: |
           TAG=${{ github.ref_name }}
           IS_SEMANTIC_TAG=$(echo "$TAG" | grep -q '^v\?[0-9]\+\.[0-9]\+\.[0-9]\+$' && echo true || echo false)
-          echo "Tag: '$TAG', it is semantic tag: '$IS_SEMANTIC_TAG'"
-          echo "is_semantic_tag=$IS_SEMANTIC_TAG" >> $GITHUB_OUTPUT
-          echo "app_image_tag=$TAG" >> $GITHUB_OUTPUT
+          echo "is_semantic_tag=$IS_SEMANTIC_TAG" | tee -a $GITHUB_OUTPUT
+          echo "app_image_tag=$TAG" | tee -a $GITHUB_OUTPUT
 
-      - name: Is ready to deploy
+      - name: It is ready to deploy
         id: deploy_ready
         run: |
-          if [[ "${{ steps.branch.outputs.is_default_branch }}" == "true" \
+          if [[ "${{ steps.default_branch.outputs.is_default_branch }}" == "true" \
             && "${{ github.ref }}" == refs/tags/* \
             && "${{ steps.tag.outputs.is_semantic_tag }}" == "true" ]]; then
-              IS_DEPLOY_READY=true
+              echo "is_deploy_ready=true" | tee -a $GITHUB_OUTPUT
           else
-              IS_DEPLOY_READY=false
+              echo "is_deploy_ready=false" | tee -a $GITHUB_OUTPUT
           fi
-          echo "Is deploy ready: $IS_DEPLOY_READY"
-          echo "is_deploy_ready=$IS_DEPLOY_READY" >> $GITHUB_OUTPUT
 
   build:
     runs-on: ubuntu-latest
     needs:
-      - determine_environment
+      - push_event_info
     env:
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
@@ -100,14 +95,15 @@ jobs:
           app_id: ${{ env.KBC_DEVELOPERPORTAL_APP }}
           username: ${{ env.KBC_DEVELOPERPORTAL_USERNAME }}
           password: ${{ secrets.KBC_DEVELOPERPORTAL_PASSWORD }}
-          tag: ${{ needs.determine_environment.outputs.app_image_tag }}
-          push_latest: ${{ needs.determine_environment.is_semantic_tag }}
+          tag: ${{ needs.push_event_info.outputs.app_image_tag }}
+          # TODO determine the latest tag?
+          push_latest: ${{ needs.push_event_info.is_semantic_tag }}
           source_image: ${{ env.KBC_DEVELOPERPORTAL_APP }}
 
   tests:
     runs-on: ubuntu-latest
     needs:
-      - determine_environment
+      - push_event_info
       - build
     steps:
       - name: Check out the repo
@@ -120,7 +116,7 @@ jobs:
           app_id: ${{ env.KBC_DEVELOPERPORTAL_APP }}
           username: ${{ env.KBC_DEVELOPERPORTAL_USERNAME }}
           password: ${{ secrets.KBC_DEVELOPERPORTAL_PASSWORD }}
-          tag: ${{ needs.determine_environment.outputs.app_image_tag }}
+          tag: ${{ needs.push_event_info.outputs.app_image_tag }}
           target_image: ${{ env.KBC_DEVELOPERPORTAL_APP}}
           tag_as_latest: true
 
@@ -135,7 +131,7 @@ jobs:
       KBC_TEST_PROJECT_CONFIGS: ${{ vars.KBC_TEST_PROJECT_CONFIGS }}
       KBC_STORAGE_TOKEN: ${{ secrets.KBC_STORAGE_TOKEN }}
     needs:
-      - determine_environment
+      - push_event_info
       - build
     runs-on: ubuntu-latest
     steps:
@@ -145,18 +141,18 @@ jobs:
         with:
           token: ${{ secrets.KBC_STORAGE_TOKEN }}
           componentId: ${{ env.KBC_DEVELOPERPORTAL_APP }}
-          tag: ${{ needs.determine_environment.outputs.app_image_tag }}
+          tag: ${{ needs.push_event_info.outputs.app_image_tag }}
           configs: ${{ env.KBC_TEST_PROJECT_CONFIGS }}
 
   deploy:
     env:
       KBC_DEVELOPERPORTAL_PASSWORD: ${{ secrets.KBC_DEVELOPERPORTAL_PASSWORD }}
     needs:
-      - determine_environment
+      - push_event_info
       - build
       - tests
       - tests-kbc
-    if: needs.determine_environment.outputs.is_deploy_ready == 'true'
+    if: needs.push_event_info.outputs.is_deploy_ready == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Set tag in the Developer Portal
@@ -166,12 +162,12 @@ jobs:
           app_id: ${{ env.KBC_DEVELOPERPORTAL_APP }}
           username: ${{ env.KBC_DEVELOPERPORTAL_USERNAME }}
           password: ${{ secrets.KBC_DEVELOPERPORTAL_PASSWORD }}
-          tag: ${{ needs.determine_environment.outputs.app_image_tag }}
+          tag: ${{ needs.push_event_info.outputs.app_image_tag }}
 
   update_developer_portal_properties:
     env:
       KBC_DEVELOPERPORTAL_PASSWORD: ${{ secrets.KBC_DEVELOPERPORTAL_PASSWORD }}
-      IS_DEPLOY_READY: ${{ needs.determine_environment.outputs.is_deploy_ready }}
+      IS_DEPLOY_READY: ${{ needs.push_event_info.outputs.is_deploy_ready }}
     needs:
       - determine_environment
       - build
