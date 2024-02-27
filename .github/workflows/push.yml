@@ -68,7 +68,7 @@ jobs:
         id: deploy_ready
         run: |
           if [[ "${{ steps.branch.outputs.is_default_branch }}" == "true" \
-            && "${{ env.ACTUAL_BRANCH }}" == "refs/tags/*" \
+            && "${{ github.ref }}" == "refs/tags/*" \
             && "${{ steps.tag.outputs.is_semantic_tag }}" == "true" ]]; then
               IS_DEPLOY_READY=true
           else
