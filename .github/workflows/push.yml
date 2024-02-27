@@ -30,36 +30,37 @@ jobs:
       - name: Fetch all branches from remote repository
         run: git fetch --prune --unshallow --tags -f
 
-      - name: get branch name
-        id: actual_branch
+      - name: Get current branch name
+        id: branch_name
         run: |
           # "Set branch names..."
           if [[ ${{ github.ref }} != "refs/tags/"* ]]; then
             branch_name=${{ github.ref_name }}
-            echo "actual_branch=$branch_name" >> $GITHUB_OUTPUT
+            echo "branch_name=$branch_name" >> $GITHUB_OUTPUT
           else
             raw=$(git branch -r --contains ${{ github.ref }})
             branch="$(echo ${raw//origin\//} | tr -d '\n')"
-            echo "actual_branch=$branch" >> $GITHUB_OUTPUT
+            echo "branch_name=$branch" >> $GITHUB_OUTPUT
           fi
+          echo "Current branch is '$branch'"
 
       - name: Is current branch the default branch
         id: branch
         run: |
-          echo "default_branch is '${{ github.event.repository.default_branch }}' and actual_branch is '${{ steps.actual_branch.outputs.actual_branch }}'"
-          if [ "${{ github.event.repository.default_branch }}" = "${{ steps.actual_branch.outputs.actual_branch }}" ]; then
-              IS_DEFAULT_BRANCH=true
+          echo "default_branch is '${{ github.event.repository.default_branch }}'"
+          if [ "${{ github.event.repository.default_branch }}" = "${{ steps.current.outputs.branch_name }}" ]; then
+             echo "is_default_branch=true" >> $GITHUB_OUTPUT
           else
-              IS_DEFAULT_BRANCH=false
+              echo "is_default_branch=false" >> $GITHUB_OUTPUT
           fi
-          echo "is_default_branch=$IS_DEFAULT_BRANCH" >> $GITHUB_OUTPUT
+          echo "Is current branch default: $is_default_branch"
 
       - name: Set image tag
         id: tag
         run: |
           TAG=${{ github.ref_name }}
           IS_SEMANTIC_TAG=$(echo "$TAG" | grep -q '^v\?[0-9]\+\.[0-9]\+\.[0-9]\+$' && echo true || echo false)
-          echo "Tag = '$TAG', is semantic tag = '$IS_SEMANTIC_TAG'"
+          echo "Tag: '$TAG', it is semantic tag: '$IS_SEMANTIC_TAG'"
           echo "is_semantic_tag=$IS_SEMANTIC_TAG" >> $GITHUB_OUTPUT
           echo "app_image_tag=$TAG" >> $GITHUB_OUTPUT
 
@@ -73,7 +74,7 @@ jobs:
           else
               IS_DEPLOY_READY=false
           fi
-          echo "Deploy Ready: $IS_DEPLOY_READY"
+          echo "Is deploy ready: $IS_DEPLOY_READY"
           echo "is_deploy_ready=$IS_DEPLOY_READY" >> $GITHUB_OUTPUT
 
   build:
