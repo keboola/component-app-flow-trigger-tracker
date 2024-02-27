@@ -158,23 +158,30 @@ class Component(ComponentBase):
     @sync_action('flow_detail')
     def flow_detail(self):
         """
-        List all flows and formate it to a list of SelectElement
+        List all flows and format it to a Markdown table
         """
         self._init_configuration()
         params = self.configuration.parameters
         # Get detail of triggers
         if params.get(KEY_TRIGGER_IDS):
-            # Remove triggers
+            # Initialize the Markdown table
+            markdown_table = "| Flow | Last Run | Selected Tables | Last Import |\n"
+            markdown_table += "|------|----------|----------------|-------------|\n"
+
+            # Fill in the table rows
             for trigger_id in params.get(KEY_TRIGGER_IDS):
                 triggers = self._list_triggers(trigger_id)
                 if triggers:
-                    trigger_tables = [f"table Id: {table.get('table_detail').get('id')} "
+                    trigger_tables = [f"**table Id: {table.get('table_detail').get('id')}** "
                                       f"({'-[x]' if bool(table.get('table_detail').get('is_expected')) else '-[ ]'} "
                                       f"last import: {table.get('table_detail').get('lastImportDate')})"
                                       for table in triggers[0].get('tables')]
-                    return ValidationResult(message=f"Flow: {triggers[0].get('configuration_detail').get('name')} "
-                                                    f"(last run: {triggers[0].get('lastRun')}) "
-                                                    f"- selected tables: {trigger_tables}")
+                    markdown_table += (f"| {triggers[0].get('configuration_detail').get('name')} "
+                                       f"| {triggers[0].get('lastRun')} "
+                                       f"| {'<br>'.join(trigger_tables)} |\n")
+
+            # Return the Markdown table
+            return ValidationResult(message=markdown_table)
 
 
 """
