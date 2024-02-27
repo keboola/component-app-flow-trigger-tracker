@@ -19,12 +19,15 @@ jobs:
   determine_environment:
     runs-on: ubuntu-latest
     env:
+      GITHUB_BASE_REF: ${{ github.event.pull_request.base.ref || github.base_ref }}
+      INPUTS_STRIP_TAG_PREFIX: ${{ inputs.strip_tag_prefix }}
       DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
       ACTUAL_BRANCH: ${{ github.ref }}
       HEAD_REF: ${{ github.head_ref }}
       REF_NAME: ${{ github.ref_name }}
       BASE_REF: ${{ github.base_ref }}
       EVENT_REF: ${{ github.event.ref }}
+      EVENT_BASE_REF: ${{ github.event.base_ref }}
     outputs:
       app_image_tag: ${{ steps.tag.outputs.app_image_tag }}
       is_semantic_tag: ${{ steps.tag.outputs.is_semantic_tag }}
@@ -34,14 +37,43 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: get branch name v 2
+        run: |
+          # "Set branch names..."
+          if [[ "$GITHUB_REF" != "refs/tags/"* ]]; then
+            BASE_REF=$(printf "%q" "$GITHUB_BASE_REF")
+            HEAD_REF=$(printf "%q" "$GITHUB_HEAD_REF")
+            REF=$(printf "%q" "$GITHUB_REF")
+          
+            BASE_REF=${BASE_REF/refs\/heads\//}
+            HEAD_REF=${HEAD_REF/refs\/heads\//}
+            REF_BRANCH=${REF/refs\/pull\//}
+            REF_BRANCH=${REF_BRANCH/refs\/heads\//}
+          
+            echo "base_ref_branch=$(eval printf "%s" "$BASE_REF")" >> "$GITHUB_OUTPUT"
+            echo "head_ref_branch=$(eval printf "%s" "$HEAD_REF")" >> "$GITHUB_OUTPUT"
+            echo "ref_branch=$(eval printf "%s" "$REF_BRANCH")" >> "$GITHUB_OUTPUT"
+          else
+            BASE_REF=$(printf "%q" "$GITHUB_EVENT_BASE_REF")
+            BASE_REF=${BASE_REF/refs\/heads\/$INPUTS_STRIP_TAG_PREFIX/}
+          
+            echo "base_ref_branch=$(eval printf "%s" "$BASE_REF")" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Print branch name v2
+        run: echo "Branch for tag is ${{ steps.branch.outputs.head_ref_branch }} \
+          - ${{ steps.branch.outputs.base_ref_branch }} \
+          - ${{ steps.branch.outputs.head_ref_branch }}"
+
       - name: Get branch name
         id: branch_name
         run: |
           echo "Branch name is $(git rev-parse --abbrev-ref $(git rev-list -n 1 ${{ github.ref }}))"
           raw=$(git branch -r --contains ${{ github.ref }})
+          echo " '$raw' "
           branch="$(echo ${raw//origin\//} | tr -d '\n')"
-          echo "{name}=branch" >> $GITHUB_OUTPUT
-          echo "Branches where this tag exists : $branch."
+          echo "{name}=$branch" >> $GITHUB_OUTPUT
+          echo "Branches where this tag exists : '$branch' "
 
       - name: Print branch name
         run: echo "Branch for tag is ${{ steps.branch_name.outputs.branch_name }}"
@@ -49,7 +81,7 @@ jobs:
       - name: Is current branch the default branch
         id: branch
         run: |
-          echo "'${{ env.HEAD_REF }}' - '${{ env.REF_NAME }}' - '${{ env.BASE_REF }}' - '${{ env.EVENT_REF }}'"
+          echo "'${{ env.HEAD_REF }}' - '${{ env.REF_NAME }}' - '${{ env.BASE_REF }}' - '${{ env.EVENT_REF }}' - '${{ env.EVENT_BASE_REF }}'"
           echo "default_branch is '${{ env.DEFAULT_BRANCH }}' and actual_branch is '${{ env.ACTUAL_BRANCH }}'"
           actual_branch_name="${{ env.ACTUAL_BRANCH }}"
           if [ "${{ env.DEFAULT_BRANCH }}" = "${actual_branch_name/#refs\/tags\//}" ]; then
