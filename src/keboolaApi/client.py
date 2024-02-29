@@ -1,4 +1,6 @@
 import json
+import logging
+
 import requests
 
 
@@ -24,12 +26,9 @@ class KeboolaClient:
             raise KeboolaClientException(
                 f"{response_error.get('error')}. Exception code {response_error.get('code')}") from e
 
-    def get_trigger(self, trigger_id):
-        url = f'{self.url}/triggers/{trigger_id}'
-        response = requests.get(url=url, headers=self.headers)
-
-        self._handle_http_error(response)
-        return response.json()
+    def get_trigger(self, flow_ids):
+        # return all triggers that are in the flow_ids list
+        return [trigger for trigger in self.get_triggers() if trigger.get('configurationId') in flow_ids]
 
     def get_triggers(self):
         url = f'{self.url}/triggers'
@@ -57,6 +56,7 @@ class KeboolaClient:
         response = requests.delete(url=url, headers=self.headers)
 
         self._handle_http_error(response)
+        logging.info(f"Trigger deleted: {trigger_id}")
         return response.text
 
     def create_trigger(self, trigger):
@@ -64,4 +64,5 @@ class KeboolaClient:
         response = requests.post(url=url, headers=self.headers, json=trigger)
 
         self._handle_http_error(response)
+        logging.info(f"Trigger created: {response.json().get('id')}")
         return response.json()

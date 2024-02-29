@@ -14,7 +14,7 @@ import keboolaApi.client as client
 
 # configuration variables
 KEY_OUTPUT_LIST_FLOWS = 'output_list_flows'
-KEY_TRIGGER_IDS = 'trigger_ids'
+KEY_FLOW_TRIGGER_IDS = 'flow_trigger_ids'
 
 
 class Component(ComponentBase):
@@ -65,12 +65,12 @@ class Component(ComponentBase):
         # Access parameters in data/config.json
         self.client = client.KeboolaClient(self.environment_variables.token, self.environment_variables.url)
 
-    def _list_triggers(self, trigger_id=None):
+    def _list_triggers(self, flow_ids=None):
         """
         Get list of triggers from the client
         """
-        if trigger_id:
-            triggers: List[Dict] = [self.client.get_trigger(trigger_id)]
+        if flow_ids:
+            triggers: List[Dict] = self.client.get_trigger(flow_ids)
         else:
             triggers = self.client.get_triggers()
 
@@ -98,20 +98,20 @@ class Component(ComponentBase):
         self._init_configuration()
         params = self.configuration.parameters
 
-        if params.get(KEY_TRIGGER_IDS) or len(params.get(KEY_TRIGGER_IDS)) > 0:
-            # Remove triggers
-            for trigger_id in params.get(KEY_TRIGGER_IDS):
-                trigger_detail = self._list_triggers(trigger_id)
-                if trigger_detail:
-                    new_trigger_conf = self._prep_new_trigger_configuration(trigger_detail[0])
+        if params.get(KEY_FLOW_TRIGGER_IDS) or len(params.get(KEY_FLOW_TRIGGER_IDS)) > 0:
+            triggers = self._list_triggers(params.get(KEY_FLOW_TRIGGER_IDS))
+            for trigger in triggers:
+                # Remove triggers
+                if trigger:
+                    new_trigger_conf = self._prep_new_trigger_configuration(trigger)
                     self.client.create_trigger(new_trigger_conf)
-                    self.client.remove_trigger(trigger_id)
+                    self.client.remove_trigger(trigger.get('id'))
 
         if params.get(KEY_OUTPUT_LIST_FLOWS):
             # List triggers
             triggers = self._list_triggers()
             if triggers:
-                columns = ['trigger_id',
+                columns = ['flow_configuration_id',
                            'trigger_last_run',
                            'flow_configuration_name',
                            'selected_table_id',
@@ -119,12 +119,9 @@ class Component(ComponentBase):
                            'selected_table_last_import_date']
 
                 # Create output table (Tabledefinition - just metadata)
-                out_table = self.create_out_table_definition('flows_with_trigger.csv', primary_key=['trigger_id'],
-                                                             columns=columns)
-
-                # get file path of the table (data/out/tables/Features.csv)
-                out_table_path = out_table.full_path
-                logging.info(out_table_path)
+                out_table = self.create_out_table_definition('flows_with_trigger.csv',
+                                                             primary_key=['flow_configuration_id'])
+                logging.info(out_table.full_path)
 
                 # Create output table (Tabledefinition - just metadata)
                 with open(out_table.full_path, mode='wt', encoding='utf-8', newline='') as out_file:
@@ -134,7 +131,7 @@ class Component(ComponentBase):
 
                     for trigger in triggers:
                         for table in trigger.get('tables'):
-                            writer.writerow({'trigger_id': trigger.get('id'),
+                            writer.writerow({'flow_configuration_id': trigger.get('configuration_detail').get('id'),
                                              'trigger_last_run': trigger.get('lastRun'),
                                              'flow_configuration_name': trigger.get('configuration_detail').get('name'),
                                              'selected_table_id': table.get('tableId'),
@@ -153,8 +150,8 @@ class Component(ComponentBase):
         List all flows and formate it to a list of SelectElement
         """
         self._init_configuration()
-        return [SelectElement(label=trigger.get('configuration_detail').get('name'), value=trigger.get('id')) for
-                trigger in self._list_triggers()]
+        return [SelectElement(label=trigger.get('configuration_detail').get('name'),
+                              value=trigger.get('configuration_detail').get('id')) for trigger in self._list_triggers()]
 
     @sync_action('flow_detail')
     def flow_detail(self):
@@ -164,22 +161,20 @@ class Component(ComponentBase):
         self._init_configuration()
         params = self.configuration.parameters
         # Get detail of triggers
-        if params.get(KEY_TRIGGER_IDS):
+        if params.get(KEY_FLOW_TRIGGER_IDS):
             # Initialize the Markdown table
             markdown_table = "| Flow | Last Run | Selected Tables | Last Import | Is expected |\n"
             markdown_table += "|------|----------|----------------|-------------|-------------|\n"
-
             # Fill in the table rows
-            for trigger_id in params.get(KEY_TRIGGER_IDS):
-                triggers = self._list_triggers(trigger_id)
-                if triggers:
-                    for table in triggers[0].get('tables'):
-                        markdown_table += \
-                            f"| **{triggers[0].get('configuration_detail').get('name')}** " \
-                            f"| {triggers[0].get('lastRun')} " \
-                            f"| **{table.get('table_detail').get('id')}**" \
-                            f"| {table.get('table_detail').get('lastImportDate')})" \
-                            f"| {table.get('table_detail').get('is_expected')} |\n"
+            markdown_table += ''.join(
+                f"| **{trigger['configuration_detail']['name']}** "
+                f"| {trigger['lastRun']} "
+                f"| **{table['table_detail']['id']}** "
+                f"| {table['table_detail']['lastImportDate']}) "
+                f"| {table['table_detail']['is_expected']} |\n"
+                for trigger in self._list_triggers(params.get(KEY_FLOW_TRIGGER_IDS))
+                for table in trigger.get('tables')
+            )
 
             # Return the Markdown table
             return ValidationResult(message=markdown_table)
