@@ -12,6 +12,12 @@ if [ "$1" == "true" ]; then
     ADD_MISSING=true
 fi
 
+# Check if the Markdown file exists, if not, exit without creating it
+if [ ! -f "$MD_FILE" ] && [ "$ADD_MISSING" == true ]; then
+    echo "Error: $MD_FILE does not exist."
+    exit 1
+fi
+
 # Function to check if an element exists in an array
 array_contains() {
     local array="$1[@]"
@@ -62,6 +68,11 @@ for sync_action in $SYNC_ACTIONS; do
         fi
     fi
 done
+
+# If no sync actions were found and the flag for adding missing actions is not set, exit without updating the file
+if [ ${#EXISTING_ACTIONS[@]} -eq 0 ] && [ "$ADD_MISSING" == false ]; then
+    exit 0
+fi
 
 # Convert the array to JSON format
 JSON_ACTIONS=$(printf '"%s",' "${EXISTING_ACTIONS[@]}")
