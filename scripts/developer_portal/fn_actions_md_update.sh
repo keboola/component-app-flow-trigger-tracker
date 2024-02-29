@@ -13,9 +13,8 @@ if [ "$1" == "true" ]; then
 fi
 
 # Check if the Markdown file exists, if not, exit without creating it
-if [ ! -f "$MD_FILE" ] && [ "$ADD_MISSING" == true ]; then
-    echo "Error: $MD_FILE does not exist."
-    exit 1
+if [ ! -f "$MD_FILE" ] && [ "$ADD_MISSING" != true ]; then
+    exit 0
 fi
 
 # Function to check if an element exists in an array
