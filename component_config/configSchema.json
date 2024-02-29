@@ -2,14 +2,8 @@
   "type": "object",
   "title": "Application configuration",
   "properties": {
-    "output_list_flows": {
-      "propertyOrder": 1,
-      "type": "boolean",
-      "format": "checkbox",
-      "title": "Write list of flows with trigger to a output"
-    },
     "flow_trigger_ids": {
-      "propertyOrder": 2,
+      "propertyOrder": 1,
       "title": "Flow triggers to reset",
       "type": "array",
       "description": "The ID of the trigger you wish to reset.",
@@ -38,7 +32,7 @@
             "label": "Check flow triggers statuses",
             "action": "flow_detail",
             "autoload": [
-              "properties.flow_trigger_ids"
+              "parameters.flow_trigger_ids"
             ]
           }
         }

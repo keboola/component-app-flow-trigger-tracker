@@ -98,15 +98,20 @@ class Component(ComponentBase):
         self._init_configuration()
         params = self.configuration.parameters
 
+        # reset triggers
         if params.get(KEY_FLOW_TRIGGER_IDS) or len(params.get(KEY_FLOW_TRIGGER_IDS)) > 0:
             triggers = self._list_triggers(params.get(KEY_FLOW_TRIGGER_IDS))
             for trigger in triggers:
                 # Remove triggers
                 if trigger:
+                    logging.info(
+                        f"Reset trigger id:{trigger.get('id')} "
+                        f"for flow name:{trigger.get('configuration_detail').get('name')}")
                     new_trigger_conf = self._prep_new_trigger_configuration(trigger)
                     self.client.create_trigger(new_trigger_conf)
                     self.client.remove_trigger(trigger.get('id'))
 
+        # List triggers to output
         if params.get(KEY_OUTPUT_LIST_FLOWS):
             # List triggers
             triggers = self._list_triggers()
@@ -120,7 +125,7 @@ class Component(ComponentBase):
 
                 # Create output table (Tabledefinition - just metadata)
                 out_table = self.create_out_table_definition('flows_with_trigger.csv',
-                                                             primary_key=['flow_configuration_id'])
+                                                             primary_key=['flow_configuration_id', 'selected_table_id'])
                 logging.info(out_table.full_path)
 
                 # Create output table (Tabledefinition - just metadata)

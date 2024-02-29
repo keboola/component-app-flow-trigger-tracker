@@ -56,7 +56,7 @@ class KeboolaClient:
         response = requests.delete(url=url, headers=self.headers)
 
         self._handle_http_error(response)
-        logging.info(f"Trigger deleted: {trigger_id}")
+        logging.info(f"Trigger id:{trigger_id} deleted!")
         return response.text
 
     def create_trigger(self, trigger):
@@ -64,5 +64,5 @@ class KeboolaClient:
         response = requests.post(url=url, headers=self.headers, json=trigger)
 
         self._handle_http_error(response)
-        logging.info(f"Trigger created: {response.json().get('id')}")
+        logging.info(f"Trigger id:{response.json().get('id')} created!")
         return response.json()
