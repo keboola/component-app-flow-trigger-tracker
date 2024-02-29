@@ -168,8 +168,8 @@ class Component(ComponentBase):
         # Get detail of triggers
         if params.get(KEY_FLOW_TRIGGER_IDS):
             # Initialize the Markdown table
-            markdown_table = "| Flow | Last Run | Selected Tables | Last Import | Is expected |\n"
-            markdown_table += "|------|----------|----------------|-------------|-------------|\n"
+            markdown_table = "| Flow | Trigger Last Run | Selected Tables | Last Import | Is expected |\n"
+            markdown_table += "|------|------------------|-----------------|-------------|-------------|\n"
             # Fill in the table rows
             markdown_table += ''.join(
                 f"| **{trigger['configuration_detail']['name']}** "
