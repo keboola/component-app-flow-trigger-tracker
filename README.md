@@ -3,49 +3,28 @@ app-flow-trigger-tracker
 
 Description
 
-**Table of contents:**
-
-[TOC]
+This component is used to reset the flow triggers in the Keboola platform.
+Also can it used to get the flow triggers for a specific flow and their information about statuses.
 
 Functionality notes
 ===================
-
-Prerequisites
-=============
-
-Get the API token, register application, etc.
-
-Features
-========
-
-| **Feature**             | **Note**                                      |
-|-------------------------|-----------------------------------------------|
-| Generic UI form         | Dynamic UI form                               |
-| Row Based configuration | Allows structuring the configuration in rows. |
-| oAuth                   | oAuth authentication enabled                  |
-| Incremental loading     | Allows fetching data in new increments.       |
-| Backfill mode           | Support for seamless backfill setup.          |
-| Date range filter       | Specify date range.                           |
-
-Supported endpoints
-===================
-
-If you need more endpoints, please submit your request to
-[ideas.keboola.com](https://ideas.keboola.com/)
+Reset flow triggers = drop & create.
 
 Configuration
 =============
 
-Param 1
+flow_trigger_ids
 -------
+List of flow configuration Ids to reset.
 
-Param 2
+output_list_flows
 -------
+Hiden parameter for listing all flows in the project and write it to the output.
 
 Output
 ======
 
-List of tables, foreign keys, schema.
+flows_with_trigger
 
 Development
 -----------
