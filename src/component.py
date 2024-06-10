@@ -41,7 +41,7 @@ class Component(ComponentBase):
 
     @staticmethod
     def _is_expected(last_run, last_import):
-        if last_run > last_import:
+        if last_run >= last_import:
             return True
         else:
             return False
