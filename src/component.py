@@ -28,68 +28,9 @@ class Component(ComponentBase):
         If `debug` parameter is present in the `config.json`, the default logger is set to verbose DEBUG mode.
     """
 
-    @staticmethod
-    def _prep_new_trigger_configuration(trigger):
-        new_trigger_conf = {
-            'runWithTokenId': trigger.get('runWithTokenId'),
-            'component': trigger.get('component'),
-            'configurationId': trigger.get('configurationId'),
-            'coolDownPeriodMinutes': trigger.get('coolDownPeriodMinutes'),
-            'tableIds': [tbl.get('tableId') for tbl in trigger.get('tables')]
-        }
-        return new_trigger_conf
-
-    @staticmethod
-    def _is_expected(last_run, last_import):
-        if last_run >= last_import:
-            return True
-        else:
-            return False
-
     def __init__(self):
         super().__init__()
         self.client = None
-
-    def _check_environments_variables(self):
-        """
-        Check the presence of required environment variables and log an error if any are missing.
-        """
-        if not self.environment_variables.token:
-            logging.error("Environment variable self.environment_variables.token not found!")
-
-        if not self.environment_variables.url:
-            logging.error("Environment variable url not found!")
-
-    def _init_configuration(self):
-        self._check_environments_variables()
-        # Access parameters in data/config.json
-        self.client = client.KeboolaClient(self.environment_variables.token, self.environment_variables.url)
-
-    def _list_triggers(self, flow_ids=None):
-        """
-        Get list of triggers from the client
-        """
-        if flow_ids:
-            triggers: List[Dict] = self.client.get_trigger(flow_ids)
-        else:
-            triggers = self.client.get_triggers()
-
-        for trigger in triggers:
-            # Add configuration details to the trigger
-            trigger['configuration_detail'] \
-                = self.client.get_component_configuration_detail(trigger.get('component'),
-                                                                 trigger.get('configurationId'))
-            # Add table details to the trigger
-            for table in trigger.get('tables'):
-                table_detail = self.client.get_table_detail(table.get('tableId'))
-                if table_detail:
-                    table_detail['is_expected'] = self._is_expected(trigger.get('lastRun'),
-                                                                    table_detail.get('lastImportDate'))
-                    table['table_detail'] = table_detail
-                # add some flag if some tables are missing
-                else:
-                    trigger['some_tables_missing'] = True
-        return triggers
 
     def run(self):
         """
@@ -149,6 +90,54 @@ class Component(ComponentBase):
                 # Save table manifest (output.csv.manifest) from the tabledefinition
                 self.write_manifest(out_table)
 
+    def _check_environments_variables(self):
+        """
+        Check the presence of required environment variables and log an error if any are missing.
+        """
+        if not self.environment_variables.token:
+            logging.error("Environment variable self.environment_variables.token not found!")
+
+        if not self.environment_variables.url:
+            logging.error("Environment variable url not found!")
+
+    def _init_configuration(self):
+        self._check_environments_variables()
+        # Access parameters in data/config.json
+        self.client = client.KeboolaClient(self.environment_variables.token, self.environment_variables.url)
+
+    def _list_triggers(self, flow_ids=None):
+        """
+        Get list of triggers from the client
+        """
+        if flow_ids:
+            triggers: List[Dict] = self.client.get_trigger(flow_ids)
+        else:
+            triggers = self.client.get_triggers()
+
+        for trigger in triggers:
+            # Add configuration details to the trigger
+            try:
+                configuration_detail = self.client.get_component_configuration_detail(trigger.get('component'),
+                                                                                      trigger.get('configurationId'))
+                trigger['configuration_detail'] = configuration_detail
+            except client.KeboolaClientException as e:
+                logging.debug(
+                    f"Error while get_configuration_detail "
+                    f"for {trigger.get('component')}:{trigger.get('configurationId')} "
+                    f"for trigger {trigger.get('id')}: {e}")
+
+            # Add table details to the trigger
+            for table in trigger.get('tables'):
+                table_detail = self.client.get_table_detail(table.get('tableId'))
+                if table_detail:
+                    table_detail['is_expected'] = self._is_expected(trigger.get('lastRun'),
+                                                                    table_detail.get('lastImportDate'))
+                    table['table_detail'] = table_detail
+                # add some flag if some tables are missing
+                else:
+                    trigger['some_tables_missing'] = True
+        return [trigger for trigger in triggers if trigger.get('configuration_detail', None)]
+
     @sync_action('list_flows')
     def list_flows(self):
         """
@@ -183,6 +172,24 @@ class Component(ComponentBase):
 
             # Return the Markdown table
             return ValidationResult(message=markdown_table)
+
+    @staticmethod
+    def _prep_new_trigger_configuration(trigger):
+        new_trigger_conf = {
+            'runWithTokenId': trigger.get('runWithTokenId'),
+            'component': trigger.get('component'),
+            'configurationId': trigger.get('configurationId'),
+            'coolDownPeriodMinutes': trigger.get('coolDownPeriodMinutes'),
+            'tableIds': [tbl.get('tableId') for tbl in trigger.get('tables')]
+        }
+        return new_trigger_conf
+
+    @staticmethod
+    def _is_expected(last_run, last_import):
+        if last_run >= last_import:
+            return True
+        else:
+            return False
 
 
 """
